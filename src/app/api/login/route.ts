@@ -31,15 +31,21 @@ export async function POST(req: Request) {
     // Extract hash from JSON field
     let hash = '';
 
-    if (user.password && typeof user.password === 'object' && 'hash' in user.password) {
-      hash = user.password.hash;
-    } else {
-      console.log('⚠️ Password format is invalid:', user.password);
-      return NextResponse.json(
-        { success: false, message: 'Invalid password format' },
-        { status: 500 }
-      );
-    }
+if (
+  user.password &&
+  typeof user.password === 'object' &&
+  'hash' in user.password &&
+  typeof user.password.hash === 'string'
+) {
+  hash = user.password.hash;
+} else {
+  console.log('⚠️ Password format is invalid:', user.password);
+  return NextResponse.json(
+    { success: false, message: 'Invalid password format' },
+    { status: 500 }
+  );
+}
+
 
     // Log values for debug
     console.log('🔑 Input password:', password);
