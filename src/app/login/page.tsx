@@ -26,6 +26,7 @@ export default function LoginPage() {
       if (res.ok && data.success) {
         // ✅ Store in sessionStorage instead of localStorage
         sessionStorage.setItem('username', data.user.username);
+        sessionStorage.setItem('user_id', data.user.id.toString()); 
 
         // Redirect after login
         router.push('/accountlogin');

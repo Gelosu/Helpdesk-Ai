@@ -1,12 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  
 }
 
 datasource db {
@@ -22,4 +15,37 @@ model Account {
   email       String   @unique
   password    Json
   acc_created DateTime @default(now())
+  Post        Post[]
+}
+
+model BeginnerQuestion {
+  id        Int       @id @default(autoincrement())
+  question  String
+  options   String[]
+  answer    Int
+  createdAt DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model Post {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  content    String
+  image_url  String?   @db.VarChar(255)
+  badge      String?   @db.VarChar(100)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  Account    Account   @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Result {
+  id                        Int       @id @default(autoincrement())
+  user_id                   Int
+  username                  String    @db.VarChar(100)
+  total_questions           Int
+  correct_answers           Int
+  total_points              Int
+  average_time_per_question Decimal   @db.Decimal(5, 2)
+  achievement               String    @db.VarChar(50)
+  answered_at               DateTime? @default(now()) @db.Timestamp(6)
+
+  @@map("results")
 }

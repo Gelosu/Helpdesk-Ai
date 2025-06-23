@@ -1,12 +1,17 @@
-// test-bcrypt.js
-const bcrypt = require('bcryptjs');
+// test-prisma.js
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-const inputPassword = 'Duma8298733$#3';
-const storedHash = '$2b$10$GlElVZa4ttBR7uBXLme9D.JEdQl.Ji9JeoFxHwTkRBYqkDdDwvMsu';
+async function main() {
+  try {
+    const questions = await prisma.beginnerQuestion.findMany();
+    console.log('✅ beginnerQuestion model exists and fetched successfully.');
+    console.log('📋 Questions:', questions);
+  } catch (error) {
+    console.error('❌ Error accessing beginnerQuestion model:', error);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
 
-bcrypt.compare(inputPassword, storedHash).then(isMatch => {
-  console.log('🔑 Input password:', inputPassword);
-  console.log('🔒 Stored hash:', storedHash);
-  console.log('✅ Match:', isMatch);
-});
-
+main();
