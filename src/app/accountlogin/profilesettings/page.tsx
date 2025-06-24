@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/navbar';
-import bcrypt from 'bcryptjs';
+import Swal from 'sweetalert2';
 
 export default function ProfileSettings() {
   const router = useRouter();
@@ -62,6 +62,27 @@ export default function ProfileSettings() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+      if (!allowedTypes.includes(file.type)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid File Type',
+          text: 'Please upload a JPG, PNG, WEBP, or GIF image.',
+        });
+        return;
+      }
+
+      if (file.size > maxSize) {
+        Swal.fire({
+          icon: 'error',
+          title: 'File Too Large',
+          text: 'The image must be under 2MB.',
+        });
+        return;
+      }
+
       setSelectedFile(file);
       setPreviewIcon(URL.createObjectURL(file));
     }
@@ -77,9 +98,13 @@ export default function ProfileSettings() {
       formData.append('email', userData.email);
 
       if (userData.password && userData.password !== '••••••••') {
-        const regex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+{}\[\]:;<>,.?~\\/-])(?=.*\d).{8,}$/;
+        const regex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+{}:;<>,.?~\\/-])(?=.*\d).{8,}$/;
         if (!regex.test(userData.password)) {
-          alert('Password must meet requirements.');
+          Swal.fire({
+            icon: 'error',
+            title: 'Invalid Password',
+            text: 'Password must include uppercase, number, symbol, and be 8+ characters.',
+          });
           return;
         }
         formData.append('password', userData.password);
@@ -95,25 +120,59 @@ export default function ProfileSettings() {
       });
 
       const result = await res.json();
+
       if (!res.ok) {
-        alert(result.error || 'Update failed.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Update Failed',
+          text: result.error || 'Something went wrong while updating.',
+        });
         return;
       }
 
       sessionStorage.setItem('username', userData.username);
       window.dispatchEvent(new Event('usernameUpdated'));
-      alert('✅ Profile updated successfully!');
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: '✅ Profile updated successfully!',
+        timer: 2000,
+        showConfirmButton: false,
+      });
     } catch (err) {
       console.error('Update failed:', err);
-      alert('An error occurred.');
+      Swal.fire({
+        icon: 'error',
+        title: 'An error occurred',
+        text: 'Please try again later.',
+      });
     }
   };
 
   const handleDiscard = () => {
     if (originalData) {
-      setUserData(originalData);
-      setPreviewIcon(null);
-      setSelectedFile(null);
+      Swal.fire({
+        title: 'Discard changes?',
+        text: 'Any unsaved changes will be lost.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, discard it!',
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setUserData(originalData);
+          setPreviewIcon(null);
+          setSelectedFile(null);
+          Swal.fire({
+            icon: 'info',
+            title: 'Changes Discarded',
+            timer: 1500,
+            showConfirmButton: false,
+          });
+        }
+      });
     }
   };
 
