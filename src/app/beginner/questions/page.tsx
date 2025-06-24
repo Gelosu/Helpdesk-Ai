@@ -37,13 +37,11 @@ export default function BeginnerQuestions() {
 
   const shuffleArray = <T,>(array: T[]): T[] => [...array].sort(() => Math.random() - 0.5);
 
-  // ⏳ Simulated loading effect (intro delay)
   useEffect(() => {
     const timer = setTimeout(() => setShowLoader(false), 2000);
     return () => clearTimeout(timer);
   }, []);
 
-  // 👤 Fetch user data
   useEffect(() => {
     const storedId = sessionStorage.getItem('user_id');
     if (storedId) {
@@ -63,7 +61,6 @@ export default function BeginnerQuestions() {
     }
   }, []);
 
-  // ❓ Fetch questions
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
@@ -82,7 +79,6 @@ export default function BeginnerQuestions() {
     fetchQuestions();
   }, []);
 
-  // 🕒 Timer
   useEffect(() => {
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
@@ -98,7 +94,6 @@ export default function BeginnerQuestions() {
     return () => clearInterval(timerRef.current!);
   }, []);
 
-  // 🧠 Save results
   useEffect(() => {
     if (showResults && userId && username) {
       const totalAnswered = points / 10;
@@ -188,9 +183,21 @@ export default function BeginnerQuestions() {
     return `${min}:${sec}`;
   };
 
+  // ✅ Moved these here to fix the render error
+  const totalAnswered = points / 10;
+  const averageSpeed = points > 0 && endTime ? (endTime - startTime) / totalAnswered / 1000 : 0;
+  const average = Number(averageSpeed.toFixed(2));
+  const achievement =
+    points >= 270
+      ? '🌟 Master Resolver'
+      : points >= 200
+      ? '🏆 Ticket Pro'
+      : points >= 100
+      ? '🎯 On the Way'
+      : '📘 Beginner';
+
   const q = questions[current];
 
-  // 🔄 Main loading state
   if (showLoader || questions.length === 0) {
     return <Loading />;
   }
