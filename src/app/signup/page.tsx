@@ -26,7 +26,10 @@ export default function SignupPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const passwordRegex =
-    /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+{}:;<>,.?~\\/-])(?=.*\d)[A-Za-z\d!@#$%^&*()_+{}:;<>,.?~\\/-]{8,}$/;
+    /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+{}\[\]:;<>,.?~\\/-])(?=.*\d)[A-Za-z\d!@#$%^&*()_+{}\[\]:;<>,.?~\\/-]{8,}$/;
+
+  const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+  const maxImageSize = 2 * 1024 * 1024;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -34,13 +37,10 @@ export default function SignupPage() {
     setForm((prev) => ({ ...prev, [name]: value }));
 
     if (name === 'password' || name === 'confirmPassword') {
-      const isInvalid = !passwordRegex.test(name === 'password' ? value : form.password);
-      const isMismatch =
-        name === 'password' ? value !== form.confirmPassword : value !== form.password;
-
       setErrors({
-        passwordInvalid: isInvalid,
-        passwordMismatch: isMismatch,
+        passwordInvalid: !passwordRegex.test(name === 'password' ? value : form.password),
+        passwordMismatch:
+          name === 'password' ? value !== form.confirmPassword : value !== form.password,
       });
     }
   };
@@ -48,24 +48,13 @@ export default function SignupPage() {
   const handleIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-      const maxSize = 2 * 1024 * 1024;
-
-      if (!allowedTypes.includes(file.type)) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Invalid Image Type',
-          text: 'Only JPG, PNG, WEBP, or GIF files are allowed.',
-        });
+      if (!allowedImageTypes.includes(file.type)) {
+        Swal.fire('Invalid File', 'Only JPG, PNG, or GIF files are allowed.', 'error');
         return;
       }
 
-      if (file.size > maxSize) {
-        Swal.fire({
-          icon: 'error',
-          title: 'File Too Large',
-          text: 'Maximum image size is 2MB.',
-        });
+      if (file.size > maxImageSize) {
+        Swal.fire('File Too Large', 'Max allowed size is 2MB.', 'error');
         return;
       }
 
@@ -103,30 +92,23 @@ export default function SignupPage() {
 
       const data = await res.json();
 
-      if (res.ok) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Account Created',
-          text: 'Redirecting to login...',
-          timer: 2000,
-          showConfirmButton: false,
+      if (res.ok && data.success) {
+        Swal.fire('Success', 'Account created successfully!', 'success');
+        setForm({
+          firstName: '',
+          lastName: '',
+          username: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
         });
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 2000);
+        setIcon(null);
+        setIconPreview(null);
       } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Signup Failed',
-          text: data.error || 'Something went wrong.',
-        });
+        Swal.fire('Signup Failed', data.error || 'Something went wrong.', 'error');
       }
     } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Server Error',
-        text: 'An unexpected error occurred.',
-      });
+      Swal.fire('Error', 'An unexpected error occurred.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -135,7 +117,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-gray-800 px-4 py-4 relative">
       <div className="absolute top-4 left-4">
-        <Link href="/" className="text-lg font-bold text-blue-500 hover:text-blue-300">
+        <Link href="/" className="text-lg font-bold text-blue-600 hover:text-blue-800">
           HelpDesk AI
         </Link>
       </div>
@@ -146,7 +128,6 @@ export default function SignupPage() {
             Create Your Account
           </h2>
 
-          {/* Icon Upload */}
           <div className="flex flex-col items-center mb-6">
             <div
               onClick={() => fileInputRef.current?.click()}
@@ -231,8 +212,7 @@ export default function SignupPage() {
               />
               {errors.passwordInvalid && (
                 <p className="text-sm text-red-500 mt-1">
-                  Password must be at least 8 characters, include a number, an uppercase letter, and
-                  a special character.
+                  Must be 8+ characters, include uppercase, number, and special char.
                 </p>
               )}
             </div>
