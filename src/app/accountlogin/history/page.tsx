@@ -167,7 +167,7 @@ export default function HistoryPage() {
                 <li key={i} className="bg-gray-800 p-3 rounded shadow space-y-1">
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="font-semibold">Challenge # {results.length - i}</p>
+                      <p className="font-semibold"></p>
                       <p className="text-xs text-gray-400">
                         {new Date(entry.answered_at).toLocaleDateString()}
                       </p>
