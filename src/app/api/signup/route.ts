@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import bcrypt from 'bcrypt';
-import { writeFile } from 'fs/promises';
-import path from 'path';
+import bcrypt from 'bcryptjs';
+import { v2 as cloudinary } from 'cloudinary';
 
 export const config = {
   api: {
@@ -10,70 +9,90 @@ export const config = {
   },
 };
 
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+  api_key: process.env.CLOUDINARY_API_KEY!,
+  api_secret: process.env.CLOUDINARY_API_SECRET!,
+});
+
+const passwordRegex =
+  /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+{}\[\]:;<>,.?~\\/-])(?=.*\d)[A-Za-z\d!@#$%^&*()_+{}\[\]:;<>,.?~\\/-]{8,}$/;
+
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
 
-    const firstName = formData.get('fname') as string;
-    const lastName = formData.get('lname') as string;
+    const fname = formData.get('fname') as string;
+    const lname = formData.get('lname') as string;
     const username = formData.get('username') as string;
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const iconFile = formData.get('icon') as File | null;
 
-    // Basic validation
-    if (!firstName || !lastName || !username || !email || !password || !iconFile) {
-      return NextResponse.json({ error: 'All fields are required.' }, { status: 400 });
+    if (!fname || !lname || !username || !email || !password) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // File validation
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    const maxSize = 2 * 1024 * 1024; // 2MB
-
-    if (!allowedTypes.includes(iconFile.type)) {
-      return NextResponse.json(
-        { error: 'Invalid image type. Use JPG, PNG, WEBP, or GIF.' },
-        { status: 400 }
-      );
+    if (!passwordRegex.test(password)) {
+      return NextResponse.json({ error: 'Password must be 8+ characters, include uppercase, number, and symbol.' }, { status: 400 });
     }
 
-    if (iconFile.size > maxSize) {
-      return NextResponse.json(
-        { error: 'Image file too large. Max 2MB allowed.' },
-        { status: 400 }
-      );
+    if (iconFile) {
+      if (!ALLOWED_TYPES.includes(iconFile.type)) {
+        return NextResponse.json({ error: 'Only JPG, PNG, or GIF files are allowed.' }, { status: 400 });
+      }
+
+      if (iconFile.size > MAX_FILE_SIZE) {
+        return NextResponse.json({ error: 'File size must not exceed 2MB.' }, { status: 400 });
+      }
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hash = await bcrypt.hash(password, 10);
 
-    // Save the image to /public/icon
-    const bytes = await iconFile.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const safeName = iconFile.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.]/g, '');
-    const fileName = `${Date.now()}_${safeName}`;
-    const filePath = path.join(process.cwd(), 'public/icon', fileName);
+    let iconUrl = '/icon/defaulticon.jpg';
 
-    await writeFile(filePath, buffer);
-    const iconUrl = `/icon/${fileName}`;
+    if (iconFile && iconFile.name) {
+      const arrayBuffer = await iconFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
 
-    // Save user to DB
+      const uploaded = await new Promise<{ secure_url: string }>((resolve, reject) => {
+        cloudinary.uploader.upload_stream(
+          {
+            folder: 'home/icons',
+            public_id: `${username}_icon`,
+            overwrite: true,
+          },
+          (err, result) => {
+            if (err || !result) return reject(err);
+            resolve(result as { secure_url: string });
+          }
+        ).end(buffer);
+      });
+
+      iconUrl = uploaded.secure_url;
+    }
+
     const user = await prisma.account.create({
       data: {
-        fname: firstName,
-        lname: lastName,
+        fname,
+        lname,
         username,
         email,
-        password: { hash: hashedPassword },
+        password: { hash },
         icons: iconUrl,
       },
     });
 
     return NextResponse.json({ success: true, user });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Signup error:', error);
+    const isConflict = error.code === 'P2002';
     return NextResponse.json(
-      { error: 'Signup failed. Email or username might already exist or file error occurred.' },
-      { status: 500 }
+      { error: isConflict ? 'Email or username already exists.' : 'Signup failed.' },
+      { status: isConflict ? 409 : 500 }
     );
   }
 }
