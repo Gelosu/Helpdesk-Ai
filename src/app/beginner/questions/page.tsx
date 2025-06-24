@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Loading from '@/app/components/loading';
 
 interface Question {
   id: number;
@@ -29,24 +30,40 @@ export default function BeginnerQuestions() {
   const [showExitModal, setShowExitModal] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
   const [showLoader, setShowLoader] = useState(true);
+  const [userIcon, setUserIcon] = useState<string | null>(null);
 
   const router = useRouter();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const shuffleArray = <T,>(array: T[]): T[] => [...array].sort(() => Math.random() - 0.5);
 
+  // ⏳ Simulated loading effect (intro delay)
   useEffect(() => {
-    const timer = setTimeout(() => setShowLoader(false), 5000);
+    const timer = setTimeout(() => setShowLoader(false), 2000);
     return () => clearTimeout(timer);
   }, []);
 
+  // 👤 Fetch user data
   useEffect(() => {
-    const storedUser = sessionStorage.getItem('username');
     const storedId = sessionStorage.getItem('user_id');
-    if (storedUser) setUsername(storedUser);
-    if (storedId) setUserId(Number(storedId));
+    if (storedId) {
+      const fetchUser = async () => {
+        try {
+          const res = await fetch(`/api/accounts?id=${storedId}`);
+          if (!res.ok) throw new Error('Failed to fetch user');
+          const data = await res.json();
+          setUsername(data.username);
+          setUserIcon(data.icons);
+          setUserId(data.id);
+        } catch (err) {
+          console.error('❌ Failed to fetch user info:', err);
+        }
+      };
+      fetchUser();
+    }
   }, []);
 
+  // ❓ Fetch questions
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
@@ -65,6 +82,7 @@ export default function BeginnerQuestions() {
     fetchQuestions();
   }, []);
 
+  // 🕒 Timer
   useEffect(() => {
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
@@ -80,20 +98,21 @@ export default function BeginnerQuestions() {
     return () => clearInterval(timerRef.current!);
   }, []);
 
-  const totalAnswered = points / 10;
-  const averageSpeed = points > 0 ? (endTime! - startTime) / totalAnswered / 1000 : 0;
-  const average = Number(averageSpeed.toFixed(2));
-  const achievement =
-    points >= 270
-      ? '🌟 Master Resolver'
-      : points >= 200
-      ? '🏆 Ticket Pro'
-      : points >= 100
-      ? '🎯 On the Way'
-      : '📘 Try Again';
-
+  // 🧠 Save results
   useEffect(() => {
     if (showResults && userId && username) {
+      const totalAnswered = points / 10;
+      const averageSpeed = points > 0 ? (endTime! - startTime) / totalAnswered / 1000 : 0;
+      const average = Number(averageSpeed.toFixed(2));
+      const achievement =
+        points >= 270
+          ? '🌟 Master Resolver'
+          : points >= 200
+          ? '🏆 Ticket Pro'
+          : points >= 100
+          ? '🎯 On the Way'
+          : '📘 Beginner';
+
       const saveResult = async () => {
         try {
           const res = await fetch('/api/results', {
@@ -110,22 +129,17 @@ export default function BeginnerQuestions() {
             }),
           });
 
-          if (res.ok) {
-            setSaveStatus("success");
-          } else {
-            setSaveStatus("error");
-          }
-        } catch (err) {
-          console.error('❌ Failed to save result:', err);
-          setSaveStatus("error");
+          setSaveStatus(res.ok ? 'success' : 'error');
+        } catch {
+          setSaveStatus('error');
         }
 
-        setTimeout(() => setSaveStatus("idle"), 3000);
+        setTimeout(() => setSaveStatus('idle'), 3000);
       };
 
       saveResult();
     }
-  }, [showResults, userId, username, questions.length, totalAnswered, points, average, achievement]);
+  }, [showResults, userId, username]);
 
   const handleSelect = (index: number) => {
     if (!submitted) setSelected(index);
@@ -176,45 +190,9 @@ export default function BeginnerQuestions() {
 
   const q = questions[current];
 
-  // 🔄 Show loading screen
-  if (showLoader) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white space-y-6">
-        <img
-          src="/loadings/loading.gif"
-          alt="Loading..."
-          className="w-120 h-60 object-contain"
-        />
-        <p className="text-lg flex items-center">
-          Loading
-          <span className="ml-1 flex space-x-1">
-            <span className="dot animate-dot animation-delay-0">.</span>
-            <span className="dot animate-dot animation-delay-1">.</span>
-            <span className="dot animate-dot animation-delay-2">.</span>
-          </span>
-        </p>
-        <style jsx>{`
-          .dot {
-            opacity: 0;
-            animation: dotFade 1.5s infinite;
-          }
-          .animation-delay-0 {
-            animation-delay: 0s;
-          }
-          .animation-delay-1 {
-            animation-delay: 0.3s;
-          }
-          .animation-delay-2 {
-            animation-delay: 0.6s;
-          }
-          @keyframes dotFade {
-            0%, 20% { opacity: 0; }
-            50% { opacity: 1; }
-            100% { opacity: 0; }
-          }
-        `}</style>
-      </div>
-    );
+  // 🔄 Main loading state
+  if (showLoader || questions.length === 0) {
+    return <Loading />;
   }
 
   return (
@@ -293,17 +271,29 @@ export default function BeginnerQuestions() {
        : (
         <div className="min-h-screen bg-gray-700 text-white px-4 py-8 flex flex-col items-center">
           {/* HEADER */}
-          <div className="w-full max-w-6xl flex justify-between items-center mb-4 px-2">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-white rounded-full" />
-              <div className="text-lg font-semibold">{username || 'Guest'}</div>
-            </div>
-            <div className="flex items-center space-x-6 text-sm">
-              <div>🎟️: <span className="font-bold">{correctQuestions.size} / 30</span></div>
-              <div>🕒: <span className="font-bold">{points > 0 ? (Date.now() - startTime) / (points / 10) / 1000 : 0}s</span></div>
-              <div>🎖️: <span className="font-bold text-yellow-400">TBD</span></div>
+         <div className="w-full max-w-6xl mb-4 px-2 overflow-x-auto">
+            <div className="flex items-center justify-between whitespace-nowrap space-x-4 text-sm">
+              {/* ✅ Avatar + Username with real icon */}
+                <div className="flex items-center space-x-2">
+                  <img
+                    src={userIcon || '/icon/defaulticon.jpg'}
+                    alt="User Icon"
+                    className="w-8 h-8 rounded-full object-cover border border-white"
+                  />
+                  <div className="text-sm font-semibold text-white">{username || 'Guest'}</div>
+                </div>
+              {/* Stats */}
+              <div className="flex items-center space-x-4 text-white">
+                <div>🎟️ <span className="font-bold">{correctQuestions.size} / 30</span></div>
+                <div>🕒 <span className="font-bold">
+                  {points > 0 ? ((Date.now() - startTime) / (points / 10) / 1000).toFixed(2) : 0}s
+                </span></div>
+                <div>🎖️ <span className="font-bold text-yellow-400">TBD</span></div>
+              </div>
             </div>
           </div>
+
+
 
           {/* TIMER BAR */}
           <div className="w-full max-w-2xl mb-4 flex items-center space-x-2">

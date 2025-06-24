@@ -32,3 +32,16 @@ export async function POST(req: Request) {
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }
+
+export async function GET() {
+  try {
+    const results = await prisma.result.findMany({
+      orderBy: { answered_at: 'desc' },
+    });
+
+    return NextResponse.json({ success: true, results });
+  } catch (error) {
+    console.error('Error fetching results:', error);
+    return new NextResponse('Failed to fetch results', { status: 500 });
+  }
+}

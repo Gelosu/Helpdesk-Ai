@@ -18,7 +18,11 @@ export default function AccountsPage() {
   const [search, setSearch] = useState('');
   const [edit, setEdit] = useState<Partial<Account> | null>(null);
   const [form, setForm] = useState({ fname: '', lname: '', username: '', email: '', password: '' });
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [errors, setErrors] = useState({ passwordMismatch: false, passwordInvalid: false });
+
+  const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+{}\[\]:;<>,.?~\\/-])(?=.*\d)[A-Za-z\d!@#$%^&*()_+{}\[\]:;<>,.?~\\/-]{8,}$/;
 
   const load = async (q = '') => {
     const res = await fetch(`/api/accounts?search=${encodeURIComponent(q)}`);
@@ -41,16 +45,39 @@ export default function AccountsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const method = edit ? 'PUT' : 'POST';
-    const payload = edit ? { ...form, id: edit.id } : form;
 
-    await fetch('/api/accounts', {
+    const method = edit ? 'PUT' : 'POST';
+    const payload: any = {
+      fname: form.fname,
+      lname: form.lname,
+      username: form.username,
+      email: form.email,
+    };
+
+    if (edit) {
+      payload.id = edit.id;
+      if (form.password) {
+        payload.password = form.password; // ✅ plain password
+      }
+    } else {
+      payload.password = form.password; // ✅ plain password
+    }
+
+    const res = await fetch('/api/accounts', {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
+    const result = await res.json();
+
+    if (!res.ok) {
+      alert(result.error || 'Something went wrong.');
+      return;
+    }
+
     setForm({ fname: '', lname: '', username: '', email: '', password: '' });
+    setConfirmPassword('');
     setEdit(null);
     setShowModal(false);
     load(search);
@@ -59,6 +86,8 @@ export default function AccountsPage() {
   const handleEdit = (u: Account) => {
     setEdit(u);
     setForm({ ...u, password: '' });
+    setConfirmPassword('');
+    setErrors({ passwordInvalid: false, passwordMismatch: false });
     setShowModal(true);
   };
 
@@ -68,16 +97,6 @@ export default function AccountsPage() {
       load(search);
     }
   };
-
-  const [confirmPassword, setConfirmPassword] = useState('');
-const [errors, setErrors] = useState({
-  passwordMismatch: false,
-  passwordInvalid: false,
-});
-
-const passwordRegex =
-  /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+{}\[\]:;<>,.?~\\/-])(?=.*\d)[A-Za-z\d!@#$%^&*()_+{}\[\]:;<>,.?~\\/-]{8,}$/;
-
 
   return (
     <div className="space-y-6 relative">
@@ -92,7 +111,13 @@ const passwordRegex =
             onChange={handleSearch}
           />
           <button
-            onClick={() => { setForm({ fname: '', lname: '', username: '', email: '', password: '' }); setEdit(null); setShowModal(true); }}
+            onClick={() => {
+              setForm({ fname: '', lname: '', username: '', email: '', password: '' });
+              setConfirmPassword('');
+              setEdit(null);
+              setErrors({ passwordInvalid: false, passwordMismatch: false });
+              setShowModal(true);
+            }}
             className="bg-green-600 px-4 py-2 rounded text-white"
           >
             ➕ Create User
@@ -100,113 +125,115 @@ const passwordRegex =
         </div>
       </div>
 
-      {/* Modal */}
-      {/* Modal */}
-        {showModal && (
+      {showModal && (
         <>
-            <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setShowModal(false)} />
-            <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setShowModal(false)} />
+          <div className="fixed inset-0 flex items-center justify-center z-50">
             <form
-                className="bg-white text-black p-6 rounded shadow-lg w-full max-w-md"
-                onSubmit={handleSubmit}
-                onClick={(e) => e.stopPropagation()}
+              className="bg-white text-black p-6 rounded shadow-lg w-full max-w-md"
+              onSubmit={handleSubmit}
+              onClick={(e) => e.stopPropagation()}
             >
-                <h2 className="text-xl font-semibold mb-4">{edit ? 'Edit User' : 'Create User'}</h2>
-                <div className="grid grid-cols-1 gap-3">
+              <h2 className="text-xl font-semibold mb-4">{edit ? 'Edit User' : 'Create User'}</h2>
+              <div className="grid grid-cols-1 gap-3">
                 <input
-                    type="text"
-                    placeholder="First Name"
-                    value={form.fname}
-                    onChange={(e) => setForm({ ...form, fname: e.target.value })}
-                    required
-                    className="p-2 border rounded"
+                  type="text"
+                  placeholder="First Name"
+                  value={form.fname}
+                  onChange={(e) => setForm({ ...form, fname: e.target.value })}
+                  required
+                  className="p-2 border rounded"
                 />
                 <input
-                    type="text"
-                    placeholder="Last Name"
-                    value={form.lname}
-                    onChange={(e) => setForm({ ...form, lname: e.target.value })}
-                    required
-                    className="p-2 border rounded"
+                  type="text"
+                  placeholder="Last Name"
+                  value={form.lname}
+                  onChange={(e) => setForm({ ...form, lname: e.target.value })}
+                  required
+                  className="p-2 border rounded"
                 />
                 <input
-                    type="text"
-                    placeholder="Username"
-                    value={form.username}
-                    onChange={(e) => setForm({ ...form, username: e.target.value })}
-                    required
-                    className="p-2 border rounded"
+                  type="text"
+                  placeholder="Username"
+                  value={form.username}
+                  onChange={(e) => setForm({ ...form, username: e.target.value })}
+                  required
+                  className="p-2 border rounded"
                 />
                 <input
-                    type="email"
-                    placeholder="Email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    required
-                    className="p-2 border rounded"
+                  type="email"
+                  placeholder="Email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  required
+                  className="p-2 border rounded"
                 />
                 <input
-                    type="password"
-                    placeholder="Password"
-                    value={form.password}
-                    onChange={(e) => {
-                    setForm({ ...form, password: e.target.value });
-                    setErrors({
-                        ...errors,
-                        passwordInvalid: !passwordRegex.test(e.target.value),
-                        passwordMismatch: e.target.value !== confirmPassword,
-                    });
-                    }}
-                    className="p-2 border rounded"
-                    required={!edit} // only required for create
+                  type="password"
+                  placeholder="Password"
+                  value={form.password}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setForm({ ...form, password: val });
+                    if (!edit) {
+                      setErrors({
+                        passwordInvalid: !passwordRegex.test(val),
+                        passwordMismatch: val !== confirmPassword,
+                      });
+                    }
+                  }}
+                  className="p-2 border rounded"
+                  required={!edit}
                 />
                 {!edit && (
-                    <input
+                  <input
                     type="password"
                     placeholder="Confirm Password"
                     value={confirmPassword}
                     onChange={(e) => {
-                        setConfirmPassword(e.target.value);
-                        setErrors({
+                      setConfirmPassword(e.target.value);
+                      setErrors({
                         ...errors,
                         passwordMismatch: e.target.value !== form.password,
-                        });
+                      });
                     }}
                     className="p-2 border rounded"
                     required
-                    />
+                  />
                 )}
                 {errors.passwordInvalid && (
-                    <p className="text-sm text-red-500">
+                  <p className="text-sm text-red-500">
                     Password must be 8+ characters with an uppercase, number, and special character.
-                    </p>
+                  </p>
                 )}
                 {errors.passwordMismatch && (
-                    <p className="text-sm text-red-500">Passwords do not match.</p>
+                  <p className="text-sm text-red-500">Passwords do not match.</p>
                 )}
-                </div>
+              </div>
 
-                <div className="flex justify-between mt-4">
+              <div className="flex justify-between mt-4">
                 <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="px-4 py-2 rounded bg-gray-400 text-white"
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 rounded bg-gray-400 text-white"
                 >
-                    Cancel
+                  Cancel
                 </button>
                 <button
-                    type="submit"
-                    className="px-4 py-2 rounded bg-green-600 text-white"
-                    disabled={!form.fname || !form.lname || !form.username || !form.email || (edit ? false : (!form.password || !confirmPassword || errors.passwordInvalid || errors.passwordMismatch))}
+                  type="submit"
+                  className="px-4 py-2 rounded bg-green-600 text-white"
+                  disabled={
+                    !form.fname || !form.lname || !form.username || !form.email ||
+                    (!edit && (!form.password || !confirmPassword || errors.passwordInvalid || errors.passwordMismatch))
+                  }
                 >
-                    {edit ? 'Update' : 'Create'}
+                  {edit ? 'Update' : 'Create'}
                 </button>
-                </div>
+              </div>
             </form>
-            </div>
+          </div>
         </>
-        )}
-
+      )}
 
       {/* User Table */}
       <table className="w-full table-auto bg-violet-800 rounded">
@@ -222,7 +249,6 @@ const passwordRegex =
             <tr><td colSpan={8} className="text-center p-4">No available records</td></tr>
           ) : filtered.map(u => (
             <tr key={u.id}>
-              {/*<td className="p-2">{u.id}</td>*/}
               <td className="p-2">{u.fname} {u.lname}</td>
               <td className="p-2">{u.username}</td>
               <td className="p-2">*****@gmail.com</td>

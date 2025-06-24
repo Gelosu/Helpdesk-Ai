@@ -1,24 +1,44 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { Menu, X } from 'lucide-react';
 
 export default function HomePage() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen flex flex-col bg-black">
       {/* NAVBAR */}
-      <nav className="flex justify-between items-center px-6 py-4 bg-black shadow">
-        {/* Left: HelpDesk AI */}
-        <Link href="/" className="text-xl font-bold text-blue-600 hover:text-blue-800">
-          HelpDesk AI
-        </Link>
+      <nav className="w-full bg-black shadow-md px-6 py-4 relative text-white">
+        <div className="flex items-center justify-between">
+          {/* Left: Logo + Menu Icon */}
+          <div className="flex items-center">
+            <button
+              className="sm:hidden text-blue-600 mr-4"
+              onClick={() => setMenuOpen((prev) => !prev)}
+            >
+              {menuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+            <Link href="/" className="text-xl sm:text-2xl font-bold text-blue-600 hover:text-blue-800">
+              HelpDesk AI
+            </Link>
+          </div>
 
-        {/* Right: Options */}
-        <div className="flex space-x-6 text-blue-700 font-medium">
-          <Link href="/docs" className="hover:text-blue-500">Support</Link>
-          <Link href="/support" className="hover:text-blue-500">Leaderboard</Link>
-          <Link href="/support" className="hover:text-blue-500">Contacts</Link>
-          <Link href="/login" className="hover:text-blue-500">Login</Link>
+          {/* Right: Desktop Login Only */}
+          <div className="hidden sm:flex space-x-6 text-blue-700 font-medium items-center">
+            <Link href="/login" className="hover:text-blue-500">Login</Link>
+          </div>
         </div>
+
+        {/* Mobile Dropdown: Login Only */}
+        {menuOpen && (
+          <div className="absolute top-full left-0 w-full bg-gray-900 flex flex-col px-6 py-4 space-y-3 z-20 sm:hidden">
+            <Link href="/login" onClick={() => setMenuOpen(false)} className="hover:text-blue-400">
+              Login
+            </Link>
+          </div>
+        )}
       </nav>
 
       {/* CONTENT */}
@@ -31,8 +51,8 @@ export default function HomePage() {
         {/* Caption */}
         <p className="mt-6 text-center text-white text-sm max-w-lg">
           In a helpdesk role, challenges often include managing high ticket volume,
-          maintaining a calm demeanor under pressure, and providing consistent, 
-          quality service across diverse issues. This is a test of both technical 
+          maintaining a calm demeanor under pressure, and providing consistent,
+          quality service across diverse issues. This is a test of both technical
           ability and emotional resilience.
         </p>
       </main>

@@ -20,19 +20,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-violet-950 text-violet-100 flex flex-col relative">
       {/* Sidebar */}
-      <div
-        className={`fixed top-0 left-0 h-full w-64 bg-violet-800 shadow-lg z-40 transform transition-transform duration-300 ease-in-out ${
-          showSidebar ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="p-6 text-lg font-bold border-b border-violet-700">☰ Menu</div>
-        <nav className="flex flex-col gap-4 p-4">
-          <Link href="/admin" className="hover:underline">📊 Dashboard</Link>
-          <Link href="/admin/accounts" className="hover:underline">👤 Accounts</Link>
-          <Link href="/admin/post" className="hover:underline">👤Post</Link>
-          <Link href="/admin/beginnerquestions" className="hover:underline">❓ Beginner Questions</Link>
-        </nav>
-      </div>
+        <div
+          className={`fixed top-0 left-0 h-full w-64 bg-violet-800 shadow-lg z-40 transform transition-transform duration-300 ease-in-out ${
+            showSidebar ? 'translate-x-0' : '-translate-x-full'
+          } flex flex-col justify-between`}
+        >
+          <div>
+            <div className="p-6 text-lg font-bold border-b border-violet-700">☰ Menu</div>
+            <nav className="flex flex-col gap-4 p-4">
+              <Link href="/admin" className="hover:underline">📊 Dashboard</Link>
+              <Link href="/admin/accounts" className="hover:underline">👤 Accounts</Link>
+              <Link href="/admin/post" className="hover:underline">📝 Post</Link>
+              <Link href="/admin/beginnerquestions" className="hover:underline">❓ Beginner Questions</Link>
+            </nav>
+          </div>
+
+          <div className="p-4">
+            <button
+              onClick={() => {
+                sessionStorage.removeItem('admin_auth');
+                location.reload();
+              }}
+              className="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+            >
+              🔒 Logout
+            </button>
+          </div>
+        </div>
+
 
       {/* Dim overlay */}
       {showSidebar && (

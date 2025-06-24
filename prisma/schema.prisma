@@ -15,8 +15,11 @@ model Account {
   email       String   @unique
   password    Json
   acc_created DateTime @default(now())
+  icons       String?  
   Post        Post[]
 }
+
+
 
 model BeginnerQuestion {
   id        Int       @id @default(autoincrement())

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 
 export default function SignupPage() {
@@ -12,6 +12,10 @@ export default function SignupPage() {
     password: '',
     confirmPassword: '',
   });
+
+  const [icon, setIcon] = useState<File | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [errors, setErrors] = useState({
     passwordMismatch: false,
@@ -38,13 +42,22 @@ export default function SignupPage() {
     }
   };
 
+  const handleIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIcon(file);
+      setIconPreview(URL.createObjectURL(file));
+    }
+  };
+
   const isFormValid =
     form.firstName &&
     form.lastName &&
     form.username &&
     form.email &&
     passwordRegex.test(form.password) &&
-    form.password === form.confirmPassword;
+    form.password === form.confirmPassword &&
+    icon;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,16 +65,17 @@ export default function SignupPage() {
     setMessage(null);
 
     try {
+      const formData = new FormData();
+      formData.append('fname', form.firstName);
+      formData.append('lname', form.lastName);
+      formData.append('username', form.username);
+      formData.append('email', form.email);
+      formData.append('password', form.password);
+      if (icon) formData.append('icon', icon);
+
       const res = await fetch('/api/signup', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName: form.firstName,
-          lastName: form.lastName,
-          username: form.username,
-          email: form.email,
-          password: form.password,
-        }),
+        body: formData,
       });
 
       const data = await res.json();
@@ -76,6 +90,8 @@ export default function SignupPage() {
           password: '',
           confirmPassword: '',
         });
+        setIcon(null);
+        setIconPreview(null);
       } else {
         setMessage({ type: 'error', text: data.error || 'Signup failed.' });
       }
@@ -96,7 +112,32 @@ export default function SignupPage() {
 
       <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
         <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-lg">
-          <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Create Your Account</h2>
+          <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
+            Create Your Account
+          </h2>
+
+          {/* Icon Upload */}
+          <div className="flex flex-col items-center mb-6">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="w-24 h-24 rounded-full border-4 border-blue-500 flex items-center justify-center cursor-pointer overflow-hidden bg-gray-100 shadow-md hover:opacity-90"
+            >
+              {iconPreview ? (
+                <img src={iconPreview} alt="Icon Preview" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-gray-400 text-sm text-center px-2">+</span>
+              )}
+            </div>
+            <p className="text-sm text-gray-600 mt-2">Click to add icon (required)</p>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleIconChange}
+              ref={fileInputRef}
+              className="hidden"
+              required
+            />
+          </div>
 
           {message && (
             <p
@@ -108,7 +149,7 @@ export default function SignupPage() {
             </p>
           )}
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form className="space-y-4" onSubmit={handleSubmit} encType="multipart/form-data">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700">First Name</label>

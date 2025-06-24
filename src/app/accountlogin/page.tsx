@@ -39,7 +39,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-black text-white">
+    <div className="min-h-screen flex flex-col bg-gray-800 text-white">
       {/* NAVBAR */}
       <nav className="flex justify-between items-center px-4 sm:px-6 py-4 bg-black shadow relative">
         <div className="flex items-center">
@@ -56,8 +56,8 @@ export default function HomePage() {
 
         <div className="hidden sm:flex space-x-6 text-blue-700 font-medium items-center">
           <Link href="/accountlogin/post" className="hover:text-blue-500">Threads</Link>
-          <Link href="/support" className="hover:text-blue-500">Leaderboard</Link>
-          <Link href="/support" className="hover:text-blue-500">Contacts</Link>
+          <Link href="/accountlogin/leaderboard" className="hover:text-blue-500">Leaderboard</Link>
+          <Link href="/accountlogin/contacts" className="hover:text-blue-500">Contacts</Link>
           {!username ? (
             <Link href="/login" className="hover:text-blue-500">Login</Link>
           ) : (
@@ -66,10 +66,27 @@ export default function HomePage() {
                 {username}
               </button>
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-32 bg-white rounded shadow-md z-10">
-                  <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    Logout
-                  </button>
+                  <div className="absolute right-0 mt-2 w-40 bg-white rounded shadow-md z-10">
+                    <Link
+                      href={`/accountlogin/profilesettings/`} 
+                      onClick={() => setDropdownOpen(false)}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Profile Settings
+                    </Link>
+                    <Link
+                      href={`/accountlogin/history/`} 
+                      onClick={() => setDropdownOpen(false)}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      History Records
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                    >
+                      Logout
+                    </button>
                 </div>
               )}
             </div>
@@ -77,20 +94,39 @@ export default function HomePage() {
         </div>
 
         {mobileMenuOpen && (
-          <div className="absolute top-full left-0 w-full bg-gray-900 flex flex-col px-6 py-4 space-y-3 z-20 sm:hidden">
-            <Link href="/accountlogin/post" className="hover:text-blue-400" onClick={() => setMobileMenuOpen(false)}>Threads</Link>
-            <Link href="/support" className="hover:text-blue-400" onClick={() => setMobileMenuOpen(false)}>Leaderboard</Link>
-            <Link href="/support" className="hover:text-blue-400" onClick={() => setMobileMenuOpen(false)}>Contacts</Link>
-            {!username ? (
-              <Link href="/login" className="hover:text-blue-400" onClick={() => setMobileMenuOpen(false)}>Login</Link>
-            ) : (
-              <button onClick={handleLogout} className="text-left text-blue-400 hover:text-blue-600">
+        <div className="absolute top-full left-0 w-full bg-gray-900 flex flex-col px-6 py-4 space-y-3 z-20 sm:hidden">
+          <Link href="/accountlogin/post" onClick={() => setMobileMenuOpen(false)} className="hover:text-blue-400">
+            Threads
+          </Link>
+          <Link href="/accountlogin/leaderboard" onClick={() => setMobileMenuOpen(false)} className="hover:text-blue-400">
+            Leaderboard
+          </Link>
+          <Link href="/accountlogin/contacts" onClick={() => setMobileMenuOpen(false)} className="hover:text-blue-400">
+            Contacts
+          </Link>
+          {!username ? (
+            <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="hover:text-blue-400">
+              Login
+            </Link>
+          ) : (
+            <>
+              <Link href="/accountlogin/profilesettings" onClick={() => setMobileMenuOpen(false)} className="hover:text-blue-400">
+                Profile Settings
+              </Link>
+              <Link href="/accountlogin/history" onClick={() => setMobileMenuOpen(false)} className="hover:text-blue-400">
+                History Records
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="text-left text-blue-400 hover:text-blue-600"
+              >
                 Logout ({username})
               </button>
-            )}
-          </div>
-        )}
-      </nav>
+            </>
+          )}
+        </div>
+      )}
+    </nav>
 
       {/* CONTENT */}
       <main className="flex-grow flex flex-col items-center justify-start px-4 pt-8 sm:pt-10">
