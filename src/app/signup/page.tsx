@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Link from 'next/link';
+import Swal from 'sweetalert2';
 
 export default function SignupPage() {
   const [form, setForm] = useState({
@@ -23,10 +24,9 @@ export default function SignupPage() {
   });
 
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const passwordRegex =
-    /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+{}\[\]:;<>,.?~\\/-])(?=.*\d)[A-Za-z\d!@#$%^&*()_+{}\[\]:;<>,.?~\\/-]{8,}$/;
+    /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+{}:;<>,.?~\\/-])(?=.*\d)[A-Za-z\d!@#$%^&*()_+{}:;<>,.?~\\/-]{8,}$/;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -34,10 +34,13 @@ export default function SignupPage() {
     setForm((prev) => ({ ...prev, [name]: value }));
 
     if (name === 'password' || name === 'confirmPassword') {
+      const isInvalid = !passwordRegex.test(name === 'password' ? value : form.password);
+      const isMismatch =
+        name === 'password' ? value !== form.confirmPassword : value !== form.password;
+
       setErrors({
-        passwordInvalid: !passwordRegex.test(name === 'password' ? value : form.password),
-        passwordMismatch:
-          name === 'password' ? value !== form.confirmPassword : value !== form.password,
+        passwordInvalid: isInvalid,
+        passwordMismatch: isMismatch,
       });
     }
   };
@@ -45,6 +48,27 @@ export default function SignupPage() {
   const handleIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      const maxSize = 2 * 1024 * 1024;
+
+      if (!allowedTypes.includes(file.type)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Image Type',
+          text: 'Only JPG, PNG, WEBP, or GIF files are allowed.',
+        });
+        return;
+      }
+
+      if (file.size > maxSize) {
+        Swal.fire({
+          icon: 'error',
+          title: 'File Too Large',
+          text: 'Maximum image size is 2MB.',
+        });
+        return;
+      }
+
       setIcon(file);
       setIconPreview(URL.createObjectURL(file));
     }
@@ -62,7 +86,6 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    setMessage(null);
 
     try {
       const formData = new FormData();
@@ -81,22 +104,29 @@ export default function SignupPage() {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage({ type: 'success', text: 'Account created successfully!' });
-        setForm({
-          firstName: '',
-          lastName: '',
-          username: '',
-          email: '',
-          password: '',
-          confirmPassword: '',
+        Swal.fire({
+          icon: 'success',
+          title: 'Account Created',
+          text: 'Redirecting to login...',
+          timer: 2000,
+          showConfirmButton: false,
         });
-        setIcon(null);
-        setIconPreview(null);
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
       } else {
-        setMessage({ type: 'error', text: data.error || 'Signup failed.' });
+        Swal.fire({
+          icon: 'error',
+          title: 'Signup Failed',
+          text: data.error || 'Something went wrong.',
+        });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'An unexpected error occurred.' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Server Error',
+        text: 'An unexpected error occurred.',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -105,7 +135,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-gray-800 px-4 py-4 relative">
       <div className="absolute top-4 left-4">
-        <Link href="/" className="text-lg font-bold text-blue-600 hover:text-blue-800">
+        <Link href="/" className="text-lg font-bold text-blue-500 hover:text-blue-300">
           HelpDesk AI
         </Link>
       </div>
@@ -138,16 +168,6 @@ export default function SignupPage() {
               required
             />
           </div>
-
-          {message && (
-            <p
-              className={`mb-4 text-center text-sm font-medium ${
-                message.type === 'success' ? 'text-green-600' : 'text-red-600'
-              }`}
-            >
-              {message.text}
-            </p>
-          )}
 
           <form className="space-y-4" onSubmit={handleSubmit} encType="multipart/form-data">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
