@@ -1,187 +1,79 @@
-'use client';
+import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import bcrypt from 'bcrypt';
+import { writeFile } from 'fs/promises';
+import path from 'path';
 
-import { useState } from 'react';
-import Swal from 'sweetalert2';
-import { useRouter } from 'next/navigation';
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
-export default function SignupPage() {
-  const router = useRouter();
-  const [form, setForm] = useState({
-    fname: '',
-    lname: '',
-    username: '',
-    email: '',
-    password: '',
-  });
+export async function POST(req: Request) {
+  try {
+    const formData = await req.formData();
 
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const firstName = formData.get('fname') as string;
+    const lastName = formData.get('lname') as string;
+    const username = formData.get('username') as string;
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const iconFile = formData.get('icon') as File | null;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0];
-    if (selected) {
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-      const maxSize = 2 * 1024 * 1024;
-
-      if (!allowedTypes.includes(selected.type)) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Invalid Image Type',
-          text: 'Only JPG, PNG, WEBP, or GIF files are allowed.',
-        });
-        return;
-      }
-
-      if (selected.size > maxSize) {
-        Swal.fire({
-          icon: 'error',
-          title: 'File Too Large',
-          text: 'Maximum image size is 2MB.',
-        });
-        return;
-      }
-
-      setFile(selected);
-      setPreviewUrl(URL.createObjectURL(selected));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!file) {
-      Swal.fire({ icon: 'error', title: 'Missing Profile Image' });
-      return;
+    // Basic validation
+    if (!firstName || !lastName || !username || !email || !password || !iconFile) {
+      return NextResponse.json({ error: 'All fields are required.' }, { status: 400 });
     }
 
-    const formData = new FormData();
-    formData.append('fname', form.fname);
-    formData.append('lname', form.lname);
-    formData.append('username', form.username);
-    formData.append('email', form.email);
-    formData.append('password', form.password);
-    formData.append('icon', file);
+    // File validation
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const maxSize = 2 * 1024 * 1024; // 2MB
 
-    try {
-      const res = await fetch('/api/signup', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Signup Failed',
-          text: result.error || 'Something went wrong.',
-        });
-        return;
-      }
-
-      Swal.fire({
-        icon: 'success',
-        title: 'Account Created',
-        text: 'Redirecting to login...',
-        timer: 2000,
-        showConfirmButton: false,
-      });
-
-      setTimeout(() => {
-        router.push('/login');
-      }, 2000);
-    } catch (error) {
-      console.error('Signup error:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Server Error',
-        text: 'Try again later.',
-      });
+    if (!allowedTypes.includes(iconFile.type)) {
+      return NextResponse.json(
+        { error: 'Invalid image type. Use JPG, PNG, WEBP, or GIF.' },
+        { status: 400 }
+      );
     }
-  };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md bg-gray-800 p-6 rounded-lg shadow-md space-y-4"
-      >
-        <h2 className="text-2xl font-bold text-center mb-4">Sign Up</h2>
+    if (iconFile.size > maxSize) {
+      return NextResponse.json(
+        { error: 'Image file too large. Max 2MB allowed.' },
+        { status: 400 }
+      );
+    }
 
-        <input
-          type="text"
-          name="fname"
-          placeholder="First Name"
-          value={form.fname}
-          onChange={handleChange}
-          className="w-full p-2 rounded bg-gray-700"
-          required
-        />
-        <input
-          type="text"
-          name="lname"
-          placeholder="Last Name"
-          value={form.lname}
-          onChange={handleChange}
-          className="w-full p-2 rounded bg-gray-700"
-          required
-        />
-        <input
-          type="text"
-          name="username"
-          placeholder="Username"
-          value={form.username}
-          onChange={handleChange}
-          className="w-full p-2 rounded bg-gray-700"
-          required
-        />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={handleChange}
-          className="w-full p-2 rounded bg-gray-700"
-          required
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={handleChange}
-          className="w-full p-2 rounded bg-gray-700"
-          required
-        />
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-        <div className="text-center">
-          {previewUrl && (
-            <img
-              src={previewUrl}
-              alt="Preview"
-              className="w-24 h-24 rounded-full object-cover mx-auto mb-2"
-            />
-          )}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="w-full text-sm"
-            required
-          />
-        </div>
+    // Save the image to /public/icon
+    const bytes = await iconFile.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const safeName = iconFile.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.]/g, '');
+    const fileName = `${Date.now()}_${safeName}`;
+    const filePath = path.join(process.cwd(), 'public/icon', fileName);
 
-        <button
-          type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded text-white font-semibold"
-        >
-          Create Account
-        </button>
-      </form>
-    </div>
-  );
+    await writeFile(filePath, buffer);
+    const iconUrl = `/icon/${fileName}`;
+
+    // Save user to DB
+    const user = await prisma.account.create({
+      data: {
+        fname: firstName,
+        lname: lastName,
+        username,
+        email,
+        password: { hash: hashedPassword },
+        icons: iconUrl,
+      },
+    });
+
+    return NextResponse.json({ success: true, user });
+  } catch (error) {
+    console.error('Signup error:', error);
+    return NextResponse.json(
+      { error: 'Signup failed. Email or username might already exist or file error occurred.' },
+      { status: 500 }
+    );
+  }
 }
