@@ -1,8 +1,15 @@
 import { PrismaClient } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import { v2 as cloudinary } from 'cloudinary';
 
 const prisma = new PrismaClient();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+  api_key: process.env.CLOUDINARY_API_KEY!,
+  api_secret: process.env.CLOUDINARY_API_SECRET!,
+});
 
 const passwordRegex =
   /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+{}\[\]:;<>,.?~\\/-])(?=.*\d)[A-Za-z\d!@#$%^&*()_+{}\[\]:;<>,.?~\\/-]{8,}$/;
@@ -98,22 +105,28 @@ export async function PUT(req: NextRequest) {
     const updateData: any = { fname, lname, username, email };
 
     if (file && file.name) {
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const ext = file.name.split('.').pop();
-      const fileName = `${username}_icon.${ext}`;
-      const filePath = `public/uploads/${fileName}`;
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
 
-      if (process.env.NODE_ENV === 'development') {
-        try {
-          const fs = await import('fs/promises');
-          await fs.writeFile(filePath, buffer);
-          updateData.icons = `/uploads/${fileName}`;
-        } catch (error) {
-          console.error('Local file save failed:', error);
-          return NextResponse.json({ error: 'Failed to save file locally.' }, { status: 500 });
-        }
-      } else {
-        return NextResponse.json({ error: 'File uploads not supported in production.' }, { status: 400 });
+        const uploaded = await new Promise<{ secure_url: string }>((resolve, reject) => {
+          cloudinary.uploader.upload_stream(
+            {
+              folder: 'home/icons', // ✅ Your updated folder
+              public_id: `${username}_icon`, // Optional: make image names clearer
+              overwrite: true,
+            },
+            (err, result) => {
+              if (err || !result) return reject(err);
+              resolve(result as { secure_url: string });
+            }
+          ).end(buffer);
+        });
+
+        updateData.icons = uploaded.secure_url;
+      } catch (error) {
+        console.error('Cloudinary upload failed:', error);
+        return NextResponse.json({ error: 'Failed to upload image.' }, { status: 500 });
       }
     }
 
@@ -137,6 +150,7 @@ export async function PUT(req: NextRequest) {
     }
   }
 
+  // JSON fallback
   const { id, fname, lname, username, email, password, icons } = await req.json();
   const updateData: any = { fname, lname, username, email };
 
